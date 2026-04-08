@@ -1,4 +1,4 @@
-﻿namespace Kleimenov_Sharp
+﻿namespace Salakhova_Sharp
 {
     partial class Form1
     {

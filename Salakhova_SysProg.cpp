@@ -1,4 +1,4 @@
-﻿#include "Kleimenov_SysProg.h"
+﻿#include "Salakhova_SysProg.h"
 
 enum MessageTypes
 {
@@ -25,7 +25,7 @@ struct Message
     }
 };
 
-class SessionKleimenov
+class SessionSalakhova
 {
     queue<Message> messages;    // <-- очередь сообщений (пока что только типа MT_CLOSE)    -- требование
     CRITICAL_SECTION cs;    // <-- объект "критическая секция" для защиты каждой очереди    -- требование
@@ -34,14 +34,14 @@ class SessionKleimenov
 public:
 
     int sessionID;  // <-- идентификатор сессии     -- требование
-    SessionKleimenov(int sessionID)
+    SessionSalakhova(int sessionID)
         :sessionID(sessionID)
     {
         InitializeCriticalSection(&cs);
         hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
     }
 
-    ~SessionKleimenov()
+    ~SessionSalakhova()
     {
         DeleteCriticalSection(&cs);
         CloseHandle(hEvent);
@@ -86,7 +86,7 @@ public:
 
 DWORD WINAPI MyThread(LPVOID lpParam)
 {
-    auto session = static_cast<SessionKleimenov*>(lpParam);
+    auto session = static_cast<SessionSalakhova*>(lpParam);
     SafeWrite("session", session->sessionID, "created");
     
     while (true)
@@ -108,7 +108,7 @@ DWORD WINAPI MyThread(LPVOID lpParam)
 
 int main()
 {
-    vector<SessionKleimenov*> sessions;
+    vector<SessionSalakhova*> sessions;
     HANDLE hQuitEvent = CreateEvent(NULL, FALSE, FALSE, L"QuitEvent");
 
     HANDLE hStartEvent = CreateEvent(NULL, FALSE, FALSE, L"StartEvent");
@@ -123,7 +123,7 @@ int main()
         {
         case 0:
         {
-            sessions.push_back(new SessionKleimenov(sessions.size()));
+            sessions.push_back(new SessionSalakhova(sessions.size()));
             CreateThread(NULL, 0, MyThread, (LPVOID)sessions.back(), 0, NULL);
             //Sleep(300);
             SetEvent(hConfirmEvent);
@@ -135,7 +135,7 @@ int main()
         {
             if (!sessions.empty())
             {
-                SessionKleimenov* lastSession = sessions.back();
+                SessionSalakhova* lastSession = sessions.back();
                 lastSession->addMessage(MT_CLOSE);
                 //Sleep(500);
                 //delete lastSession;
