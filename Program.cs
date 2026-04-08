@@ -4,7 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
-namespace Kleimenov_Sharp
+namespace Salakhova_Sharp
 {
     internal static class Program
     {

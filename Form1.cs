@@ -1,6 +1,6 @@
 using System.Diagnostics;
 
-namespace Kleimenov_Sharp
+namespace Salakhova_Sharp
 {
     public partial class Form1 : Form
     {
@@ -34,11 +34,11 @@ namespace Kleimenov_Sharp
         {
             if (childProcess == null || childProcess.HasExited)
             {
-                childProcess = Process.Start("Kleimenov_CPP.exe");
+                childProcess = Process.Start("Salakhova_CPP.exe");
 
                 listBox1.Items.Clear();
-                listBox1.Items.Add("Все потоки");
-                listBox1.Items.Add("Главный поток");
+                listBox1.Items.Add("пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ");
+                listBox1.Items.Add("пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ");
             }
             else
             {
