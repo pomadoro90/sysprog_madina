@@ -7,7 +7,7 @@ namespace Salakhova_Sharp
     public partial class Form1 : Form
     {
         private SalakhovaSocketClient client;
-        private Timer pollTimer;
+        private System.Windows.Forms.Timer pollTimer;
 
         public Form1()
         {

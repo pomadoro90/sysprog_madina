@@ -17,7 +17,7 @@ public:
     virtual void send(Message& m) const override
     {
         std::lock_guard<std::mutex> lg(writeMx_);
-        sendData(s, &m.header);
+        sendData(s, &m.header, sizeof(MessageHeader));
         if (m.header.size > 0)
         {
             sendData(s, m.data.data(), m.header.size);
@@ -26,11 +26,11 @@ public:
 
     virtual void receive(Message& m) const override
     {
-        receiveData(s, &m.header);
+        receiveData(s, &m.header, sizeof(MessageHeader));
         if (m.header.size > 0)
         {
             m.data.resize(m.header.size / sizeof(wchar_t));
-            receiveData(s, (void*)&m.data[0], m.header.size);
+            receiveData(s, &m.data[0], m.header.size);
         }
         else
         {
@@ -92,7 +92,7 @@ public:
             try
             {
                 Message m = Message::receiveMessage(transport);
-                SafeWrite("msg: to=", m.header.to, "from=", m.header.from, "type=", m.header.messageType);
+                SafeWrite(L"msg: to=", m.header.to, L"from=", m.header.from, L"type=", m.header.messageType);
 
                 switch (m.header.messageType)
                 {
@@ -103,7 +103,7 @@ public:
                         auto session = std::make_shared<Session>(newID, m.data);
                         sessions[newID] = session;
                         Message(newID, MR_BROKER, MT_INIT).send(transport);
-                        SafeWrite("session", newID, "created, name:", m.data);
+                        SafeWrite(L"session", newID, L"created, name:", m.data);
                         break;
                     }
                     case MT_EXIT:
@@ -111,7 +111,7 @@ public:
                         std::lock_guard<std::mutex> lg(mx);
                         sessions.erase(m.header.from);
                         Message(m.header.from, MR_BROKER, MT_CONFIRM).send(transport);
-                        SafeWrite("session", m.header.from, "closed");
+                        SafeWrite(L"session", m.header.from, L"closed");
                         return;
                     }
                     case MT_GETDATA:
@@ -140,7 +140,7 @@ public:
 int main()
 {
     setlocale(LC_ALL, "Russian");
-    SafeWrite("Message Broker Server started on port 12345");
+    SafeWrite(L"Message Broker Server started on port 12345");
 
     try
     {

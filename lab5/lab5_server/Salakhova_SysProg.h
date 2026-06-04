@@ -20,19 +20,17 @@
 using namespace boost::asio;
 using boost::asio::ip::tcp;
 
-template<typename T>
-void sendData(tcp::socket& s, const T* data, size_t count = 1)
+inline void sendData(tcp::socket& s, const void* data, size_t size)
 {
     boost::system::error_code ec;
-    write(s, buffer(data, sizeof(T) * count), ec);
+    write(s, buffer(data, size), ec);
     if (ec) throw boost::system::system_error(ec);
 }
 
-template<typename T>
-void receiveData(tcp::socket& s, T* data, size_t count = 1)
+inline void receiveData(tcp::socket& s, void* data, size_t size)
 {
     boost::system::error_code ec;
-    read(s, buffer(data, sizeof(T) * count), ec);
+    read(s, buffer(data, size), ec);
     if (ec) throw boost::system::system_error(ec);
 }
 
@@ -42,5 +40,5 @@ template<typename... Args>
 inline void SafeWrite(Args... args)
 {
     std::lock_guard<std::mutex> lock(console_mx);
-    ((std::cout << args << ' '), ...) << std::endl;
+    ((std::wcout << args << L' '), ...) << std::endl;
 }
