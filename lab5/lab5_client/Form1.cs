@@ -1,31 +1,20 @@
 using System;
-using System.Text;
+using System.Linq;
 using System.Windows.Forms;
 
 namespace Salakhova_Sharp
 {
     public partial class Form1 : Form
     {
-        const int MT_INIT = 0;
-        const int MT_EXIT = 1;
-        const int MT_GETDATA = 2;
-        const int MT_DATA = 3;
-        const int MT_NODATA = 4;
-        const int MT_CONFIRM = 5;
-
-        private System.Windows.Forms.Timer pollTimer;
+        private SalakhovaSocketClient client;
+        private Timer pollTimer;
 
         public Form1()
         {
             InitializeComponent();
             this.FormClosing += Form1_FormClosing;
 
-            btnConnect.Text = "Connect";
-            btnDisconnect.Text = "Disconnect";
-            btnSend.Text = "Send Message";
-            this.Text = "Message Client";
-
-            pollTimer = new System.Windows.Forms.Timer();
+            pollTimer = new Timer();
             pollTimer.Interval = 100;
             pollTimer.Tick += PollTimer_Tick;
 
@@ -39,13 +28,21 @@ namespace Salakhova_Sharp
             btnSend.Enabled = isConnected;
             comboRecipient.Enabled = isConnected;
             textBoxMessage.Enabled = isConnected;
+            txtHost.Enabled = !isConnected;
+            numericPort.Enabled = !isConnected;
         }
 
         private void btnConnect_Click(object sender, EventArgs e)
         {
             try
             {
-                Message.send(MessageRecipients.MR_BROKER, MessageTypes.MT_INIT);
+                client = new SalakhovaSocketClient();
+                client.Connect(txtHost.Text, (int)numericPort.Value);
+
+                comboRecipient.Items.Clear();
+                comboRecipient.Items.Add(new RecipientItem("All (50)", (int)MessageRecipients.MR_ALL));
+                comboRecipient.SelectedIndex = 0;
+
                 pollTimer.Start();
                 ToggleUi(true);
             }
@@ -66,21 +63,50 @@ namespace Salakhova_Sharp
             if (string.IsNullOrWhiteSpace(textBoxMessage.Text)) return;
             if (comboRecipient.SelectedItem == null) return;
 
-            int targetId = ((RecipientItem)comboRecipient.SelectedItem).Id;
-            Message.send(targetId, MessageTypes.MT_DATA, textBoxMessage.Text);
+            try
+            {
+                int targetId = ((RecipientItem)comboRecipient.SelectedItem).Id;
+                client.Send(targetId, MessageTypes.MT_DATA, textBoxMessage.Text);
 
-            txtOutput.AppendText($"[You -> {comboRecipient.SelectedItem}]: {textBoxMessage.Text}\r\n");
-            textBoxMessage.Clear();
+                txtOutput.AppendText($"[You -> {comboRecipient.SelectedItem}]: {textBoxMessage.Text}\r\n");
+                textBoxMessage.Clear();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Send error: " + ex.Message, "Error",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
 
         private void PollTimer_Tick(object sender, EventArgs e)
         {
+            if (client == null || !client.IsConnected)
+            {
+                pollTimer.Stop();
+                ToggleUi(false);
+                return;
+            }
+
             try
             {
-                var m = Message.send(MessageRecipients.MR_BROKER, MessageTypes.MT_GETDATA);
-                if (m.header.type == MessageTypes.MT_DATA)
+                while (client.TryReceive(out Message msg))
                 {
-                    txtOutput.AppendText($"[From Client #{m.header.from}]: {m.data}\r\n");
+                    if (msg.header.type == (int)MessageTypes.MT_DATA)
+                    {
+                        txtOutput.AppendText($"[From Client #{msg.header.from}]: {msg.data}\r\n");
+
+                        // Update recipient list with new client IDs
+                        if (msg.header.from >= (int)MessageRecipients.MR_USER)
+                        {
+                            bool exists = comboRecipient.Items.Cast<RecipientItem>()
+                                .Any(item => item.Id == msg.header.from);
+
+                            if (!exists)
+                            {
+                                comboRecipient.Items.Add(new RecipientItem($"Client #{msg.header.from}", msg.header.from));
+                            }
+                        }
+                    }
                 }
             }
             catch
@@ -94,13 +120,18 @@ namespace Salakhova_Sharp
 
         private void DisconnectClient()
         {
-            try
-            {
-                Message.send(MessageRecipients.MR_BROKER, MessageTypes.MT_EXIT);
-            }
-            catch { }
-
             pollTimer.Stop();
+
+            if (client != null)
+            {
+                try
+                {
+                    client.Disconnect();
+                }
+                catch { }
+                client = null;
+            }
+
             ToggleUi(false);
             comboRecipient.Items.Clear();
         }
