@@ -14,12 +14,18 @@
     <ClCompile Include="Salakhova_Server.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Salakhova_Message.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Salakhova_Session.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Salakhova_SysProg.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Salakhova_enums.h">
+    <ClInclude Include="Salakhova_Interfaces.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Salakhova_Message.h">

@@ -12,6 +12,10 @@
 #include <iostream>
 #include <string>
 #include <mutex>
+#include <thread>
+#include <map>
+#include <memory>
+#include <vector>
 
 using namespace boost::asio;
 using boost::asio::ip::tcp;

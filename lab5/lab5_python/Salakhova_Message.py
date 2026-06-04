@@ -1,3 +1,4 @@
+# Salakhova Lab 5 — Message types, header format, Message class
 import socket
 import struct
 

@@ -1,3 +1,4 @@
+# Salakhova Lab 5 — SalakhovaClient class with persistent socket, background reader, interactive loop
 import argparse
 import socket
 import struct

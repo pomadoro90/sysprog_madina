@@ -115,7 +115,7 @@ namespace Salakhova_Sharp
             this.Controls.Add(this.txtHost);
             this.Margin = new System.Windows.Forms.Padding(5);
             this.Name = "Form1";
-            this.Text = "Message Client";
+            this.Text = "Salakhova Lab5";
             ((System.ComponentModel.ISupportInitialize)(this.numericPort)).EndInit();
             this.ResumeLayout(false);
             this.PerformLayout();

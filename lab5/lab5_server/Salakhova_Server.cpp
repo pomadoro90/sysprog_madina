@@ -1,5 +1,43 @@
+#include "Salakhova_SysProg.h"
 #include "Salakhova_Message.h"
 #include "Salakhova_Session.h"
+#include "Salakhova_Interfaces.h"
+
+class SocketTransport : public Sender, public Receiver
+{
+    tcp::socket& s;
+    mutable std::mutex writeMx_;
+
+public:
+    SocketTransport(tcp::socket& s)
+        : s(s)
+    {
+    }
+
+    virtual void send(Message& m) const override
+    {
+        std::lock_guard<std::mutex> lg(writeMx_);
+        sendData(s, &m.header);
+        if (m.header.size > 0)
+        {
+            sendData(s, m.data.data(), m.header.size);
+        }
+    }
+
+    virtual void receive(Message& m) const override
+    {
+        receiveData(s, &m.header);
+        if (m.header.size > 0)
+        {
+            m.data.resize(m.header.size / sizeof(wchar_t));
+            receiveData(s, (void*)&m.data[0], m.header.size);
+        }
+        else
+        {
+            m.data.clear();
+        }
+    }
+};
 
 class SRBroker : public Sender, public Receiver
 {
@@ -14,20 +52,23 @@ public:
     {
         std::lock_guard<std::mutex> lg(mx);
         auto iSessionFrom = sessions.find(m.header.from);
-        if (iSessionFrom != sessions.end())
+        if (iSessionFrom == sessions.end())
+            return;
+
+        if (m.header.to == MR_ALL)
+        {
+            for (auto& [id, session] : sessions)
+            {
+                if (id != m.header.from)
+                    session->addMessage(m);
+            }
+        }
+        else
         {
             auto iSessionTo = sessions.find(m.header.to);
             if (iSessionTo != sessions.end())
             {
                 iSessionTo->second->addMessage(m);
-            }
-            else if (m.header.to == MR_ALL)
-            {
-                for (auto& [id, session] : sessions)
-                {
-                    if (id != m.header.from)
-                        session->addMessage(m);
-                }
             }
         }
     }
@@ -36,45 +77,54 @@ public:
     {
         std::lock_guard<std::mutex> lg(mx);
         auto iSession = sessions.find(m.header.from);
-        if (iSession == sessions.end() || !iSession->second->getMessage(m))
-            m = { m.header.from, MessageRecipients::MR_BROKER, MessageTypes::MT_NODATA };
+        if (iSession == sessions.end() || !iSession->second->tryGetMessage(m))
+        {
+            m = Message(m.header.from, MR_BROKER, MT_NODATA);
+        }
     }
 
     static void worker(tcp::socket s)
     {
+        SocketTransport transport(s);
+
         while (true)
         {
             try
             {
-                Message m = Message::receiveMessage(SRSocket(s));
-                SafeWrite("msg: to=", m.header.to, "from=", m.header.from, "type=", m.header.type);
+                Message m = Message::receiveMessage(transport);
+                SafeWrite("msg: to=", m.header.to, "from=", m.header.from, "type=", m.header.messageType);
 
-                switch (m.header.type)
+                switch (m.header.messageType)
                 {
                     case MT_INIT:
                     {
                         std::lock_guard<std::mutex> lg(mx);
-                        auto session = std::make_shared<Session>(++maxID, m.data);
-                        sessions[session->sessionID] = session;
-                        Message(session->sessionID, MR_BROKER, MT_INIT).send(SRSocket(s));
+                        int newID = ++maxID;
+                        auto session = std::make_shared<Session>(newID, m.data);
+                        sessions[newID] = session;
+                        Message(newID, MR_BROKER, MT_INIT).send(transport);
+                        SafeWrite("session", newID, "created, name:", m.data);
                         break;
                     }
                     case MT_EXIT:
                     {
                         std::lock_guard<std::mutex> lg(mx);
                         sessions.erase(m.header.from);
-                        Message(m.header.from, MR_BROKER, MT_CONFIRM).send(SRSocket(s));
+                        Message(m.header.from, MR_BROKER, MT_CONFIRM).send(transport);
+                        SafeWrite("session", m.header.from, "closed");
                         return;
                     }
                     case MT_GETDATA:
                     {
-                        m.receive(SRBroker()).send(SRSocket(s));
+                        Message reply;
+                        reply.receive(SRBroker());
+                        reply.send(transport);
                         break;
                     }
                     default:
                     {
                         m.send(SRBroker());
-                        Message(m.header.from, MR_BROKER, MT_CONFIRM).send(SRSocket(s));
+                        Message(m.header.from, MR_BROKER, MT_CONFIRM).send(transport);
                         break;
                     }
                 }
