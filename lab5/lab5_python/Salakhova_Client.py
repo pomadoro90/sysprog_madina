@@ -64,7 +64,7 @@ class SalakhovaClient:
             reply = Message()
             reply.receive(self._sock)
 
-        if reply.header.type == MT_INIT or reply.header.type == MT_CONFIRM:
+        if reply.header.type == MT_INIT:
             self._client_id = reply.header.to
             self._connected = True
         else:
