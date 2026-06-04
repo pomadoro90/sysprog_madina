@@ -14,7 +14,7 @@ namespace Salakhova_Sharp
             InitializeComponent();
             this.FormClosing += Form1_FormClosing;
 
-            pollTimer = new Timer();
+            pollTimer = new System.Windows.Forms.Timer();
             pollTimer.Interval = 100;
             pollTimer.Tick += PollTimer_Tick;
 
