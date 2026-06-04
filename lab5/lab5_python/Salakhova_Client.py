@@ -155,7 +155,10 @@ class SalakhovaClient:
                     reply = Message()
                     reply.receive(self._sock)
 
-                if reply.header.type == MT_DATA:
+                if reply.header.type == MT_INIT:
+                    # New client joined — just print notification
+                    print(f"\n[Client #{reply.header.from_id} joined: {reply.data}]\n> ", end="", flush=True)
+                elif reply.header.type == MT_DATA:
                     self._inbox.put(reply)
                 elif reply.header.type == MT_NODATA:
                     time.sleep(0.1)

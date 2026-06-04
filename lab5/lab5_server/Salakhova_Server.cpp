@@ -105,6 +105,13 @@ public:
                         sessions[newID] = session;
                         Message(newID, MR_BROKER, MT_INIT).send(transport);
                         SafeWrite(L"session", newID, L"created, name:", m.data);
+                        // Notify all other clients about the newcomer
+                        Message notify(newID, newID, MT_INIT, m.data);
+                        for (auto& [id, sess] : sessions)
+                        {
+                            if (id != newID)
+                                sess->addMessage(notify);
+                        }
                         break;
                     }
                     case MT_EXIT:

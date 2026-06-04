@@ -91,16 +91,31 @@ namespace Salakhova_Sharp
             {
                 while (client.TryReceive(out Message msg))
                 {
-                    if (msg.header.type == (int)MessageTypes.MT_DATA)
+                    if (msg.header.type == (int)MessageTypes.MT_INIT)
+                    {
+                        // New client joined — add to recipient list
+                        if (msg.header.from >= (int)MessageRecipients.MR_USER
+                            && msg.header.from != client.ClientId)
+                        {
+                            bool exists = comboRecipient.Items.Cast<RecipientItem>()
+                                .Any(item => item.Id == msg.header.from);
+                            if (!exists)
+                            {
+                                string name = !string.IsNullOrEmpty(msg.data)
+                                    ? msg.data : $"Client #{msg.header.from}";
+                                comboRecipient.Items.Add(new RecipientItem(name, msg.header.from));
+                            }
+                        }
+                    }
+                    else if (msg.header.type == (int)MessageTypes.MT_DATA)
                     {
                         txtOutput.AppendText($"[From Client #{msg.header.from}]: {msg.data}\r\n");
 
-                        // Update recipient list with new client IDs
+                        // Auto-add sender to recipient list if not there yet
                         if (msg.header.from >= (int)MessageRecipients.MR_USER)
                         {
                             bool exists = comboRecipient.Items.Cast<RecipientItem>()
                                 .Any(item => item.Id == msg.header.from);
-
                             if (!exists)
                             {
                                 comboRecipient.Items.Add(new RecipientItem($"Client #{msg.header.from}", msg.header.from));
