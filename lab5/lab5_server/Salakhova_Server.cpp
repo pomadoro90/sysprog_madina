@@ -92,7 +92,8 @@ public:
             try
             {
                 Message m = Message::receiveMessage(transport);
-                SafeWrite(L"msg: to=", m.header.to, L"from=", m.header.from, L"type=", m.header.messageType);
+                if (m.header.messageType != MT_GETDATA)
+                    SafeWrite(L"msg: to=", m.header.to, L"from=", m.header.from, L"type=", m.header.messageType);
 
                 switch (m.header.messageType)
                 {
@@ -116,8 +117,9 @@ public:
                     }
                     case MT_GETDATA:
                     {
-                        Message reply;
-                        reply.receive(SRBroker());
+                        Message reply(m.header.from, MR_BROKER, MT_NODATA);
+                        SRBroker().receive(reply);
+                        reply.header.to = m.header.from;
                         reply.send(transport);
                         break;
                     }
