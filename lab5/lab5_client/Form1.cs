@@ -40,7 +40,7 @@ namespace Salakhova_Sharp
                 client.Connect(txtHost.Text, (int)numericPort.Value);
 
                 comboRecipient.Items.Clear();
-                comboRecipient.Items.Add(new RecipientItem("All (50)", (int)MessageRecipients.MR_ALL));
+                comboRecipient.Items.Add(new RecipientItem("All (Broadcast)", (int)MessageRecipients.MR_ALL));
                 comboRecipient.SelectedIndex = 0;
 
                 pollTimer.Start();
@@ -91,36 +91,17 @@ namespace Salakhova_Sharp
             {
                 while (client.TryReceive(out Message msg))
                 {
-                    if (msg.header.type == (int)MessageTypes.MT_INIT)
+                    if (msg.header.type == (int)MessageTypes.MT_CONFIRM)
                     {
-                        // New client joined — add to recipient list
-                        if (msg.header.from >= (int)MessageRecipients.MR_USER
-                            && msg.header.from != client.ClientId)
-                        {
-                            bool exists = comboRecipient.Items.Cast<RecipientItem>()
-                                .Any(item => item.Id == msg.header.from);
-                            if (!exists)
-                            {
-                                string name = !string.IsNullOrEmpty(msg.data)
-                                    ? msg.data : $"Client #{msg.header.from}";
-                                comboRecipient.Items.Add(new RecipientItem(name, msg.header.from));
-                            }
-                        }
+                        ParseClientList(msg.data);
                     }
                     else if (msg.header.type == (int)MessageTypes.MT_DATA)
                     {
                         txtOutput.AppendText($"[From Client #{msg.header.from}]: {msg.data}\r\n");
-
-                        // Auto-add sender to recipient list if not there yet
-                        if (msg.header.from >= (int)MessageRecipients.MR_USER)
-                        {
-                            bool exists = comboRecipient.Items.Cast<RecipientItem>()
-                                .Any(item => item.Id == msg.header.from);
-                            if (!exists)
-                            {
-                                comboRecipient.Items.Add(new RecipientItem($"Client #{msg.header.from}", msg.header.from));
-                            }
-                        }
+                    }
+                    else if (msg.header.type == (int)MessageTypes.MT_INIT)
+                    {
+                        // Server confirmed our connection — ignore, list comes via MT_CONFIRM
                     }
                 }
             }
@@ -131,6 +112,41 @@ namespace Salakhova_Sharp
                 MessageBox.Show("Connection to server lost!", "Disconnected",
                     MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
+        }
+
+        private void ParseClientList(string payload)
+        {
+            int prevId = -999;
+            if (comboRecipient.SelectedItem != null)
+                prevId = ((RecipientItem)comboRecipient.SelectedItem).Id;
+
+            comboRecipient.Items.Clear();
+            comboRecipient.Items.Add(new RecipientItem("All (Broadcast)", (int)MessageRecipients.MR_ALL));
+
+            if (!string.IsNullOrEmpty(payload))
+            {
+                string[] clients = payload.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries);
+                foreach (var c in clients)
+                {
+                    string[] parts = c.Split(':');
+                    if (parts.Length >= 2 && int.TryParse(parts[0], out int id))
+                    {
+                        if (id != client.ClientId) // Don't show self
+                        {
+                            string name = parts.Length > 1 ? parts[1] : $"Client #{id}";
+                            comboRecipient.Items.Add(new RecipientItem($"{name} (#{id})", id));
+                        }
+                    }
+                }
+            }
+
+            // Restore previous selection if possible
+            bool found = false;
+            foreach (RecipientItem item in comboRecipient.Items)
+            {
+                if (item.Id == prevId) { comboRecipient.SelectedItem = item; found = true; break; }
+            }
+            if (!found && comboRecipient.Items.Count > 0) comboRecipient.SelectedIndex = 0;
         }
 
         private void DisconnectClient()

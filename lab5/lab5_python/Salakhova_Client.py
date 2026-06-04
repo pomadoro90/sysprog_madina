@@ -155,9 +155,18 @@ class SalakhovaClient:
                     reply = Message()
                     reply.receive(self._sock)
 
-                if reply.header.type == MT_INIT:
-                    # New client joined — just print notification
-                    print(f"\n[Client #{reply.header.from_id} joined: {reply.data}]\n> ", end="", flush=True)
+                if reply.header.type == MT_CONFIRM:
+                    # Client list update — parse "id:name;id:name;..."
+                    peers = []
+                    if reply.data:
+                        for entry in reply.data.split(';'):
+                            parts = entry.split(':', 1)
+                            if len(parts) == 2 and parts[0].isdigit():
+                                pid = int(parts[0])
+                                if pid != self._client_id:
+                                    peers.append((pid, parts[1]))
+                    if peers:
+                        print(f"\n[Clients: {'; '.join(f'{n}(#{i})' for i, n in peers)}]\n> ", end="", flush=True)
                 elif reply.header.type == MT_DATA:
                     self._inbox.put(reply)
                 elif reply.header.type == MT_NODATA:

@@ -2,6 +2,7 @@
 #include "Salakhova_Message.h"
 #include "Salakhova_Session.h"
 #include "Salakhova_Interfaces.h"
+#include <sstream>
 
 class SocketTransport : public Sender, public Receiver
 {
@@ -48,6 +49,30 @@ public:
     static inline std::map<int, std::shared_ptr<Session>> sessions;
     static inline std::mutex mx;
 
+    static std::wstring BuildClientList()
+    {
+        std::wostringstream oss;
+        bool first = true;
+        for (auto& [id, session] : sessions)
+        {
+            if (!first) oss << L';';
+            first = false;
+            oss << id << L':' << session->name;
+        }
+        return oss.str();
+    }
+
+    static void BroadcastClientList()
+    {
+        std::wstring list = BuildClientList();
+        std::lock_guard<std::mutex> lg(mx);
+        for (auto& [id, session] : sessions)
+        {
+            Message confirm(id, MR_BROKER, MT_CONFIRM, list);
+            session->addMessage(confirm);
+        }
+    }
+
     virtual void send(Message& m) const override
     {
         std::lock_guard<std::mutex> lg(mx);
@@ -92,34 +117,32 @@ public:
             try
             {
                 Message m = Message::receiveMessage(transport);
-                if (m.header.messageType != MT_GETDATA)
-                    SafeWrite(L"msg: to=", m.header.to, L"from=", m.header.from, L"type=", m.header.messageType);
 
                 switch (m.header.messageType)
                 {
                     case MT_INIT:
                     {
-                        std::lock_guard<std::mutex> lg(mx);
-                        int newID = ++maxID;
-                        auto session = std::make_shared<Session>(newID, m.data);
-                        sessions[newID] = session;
-                        Message(newID, MR_BROKER, MT_INIT).send(transport);
-                        SafeWrite(L"session", newID, L"created, name:", m.data);
-                        // Notify all other clients about the newcomer
-                        Message notify(newID, newID, MT_INIT, m.data);
-                        for (auto& [id, sess] : sessions)
+                        std::wstring clientList;
                         {
-                            if (id != newID)
-                                sess->addMessage(notify);
+                            std::lock_guard<std::mutex> lg(mx);
+                            int newID = ++maxID;
+                            auto session = std::make_shared<Session>(newID, m.data);
+                            sessions[newID] = session;
+                            SafeWrite(L"session", newID, L"created, name:", m.data);
                         }
+                        // Broadcast updated client list to everyone
+                        BroadcastClientList();
                         break;
                     }
                     case MT_EXIT:
                     {
-                        std::lock_guard<std::mutex> lg(mx);
-                        sessions.erase(m.header.from);
-                        Message(m.header.from, MR_BROKER, MT_CONFIRM).send(transport);
-                        SafeWrite(L"session", m.header.from, L"closed");
+                        {
+                            std::lock_guard<std::mutex> lg(mx);
+                            sessions.erase(m.header.from);
+                            SafeWrite(L"session", m.header.from, L"closed");
+                        }
+                        // Broadcast updated client list to remaining clients
+                        BroadcastClientList();
                         return;
                     }
                     case MT_GETDATA:
