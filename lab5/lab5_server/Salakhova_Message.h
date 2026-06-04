@@ -1,7 +1,7 @@
 #pragma once
 
-#include "asio.h"
-#include "enums.h"
+#include "Salakhova_SysProg.h"
+#include "Salakhova_enums.h"
 
 struct Message;
 

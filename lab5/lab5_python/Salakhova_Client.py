@@ -4,7 +4,7 @@ import struct
 import threading
 import time
 from queue import Queue, Empty
-from Message import (
+from Salakhova_Message import (
     MT_INIT, MT_EXIT, MT_GETDATA, MT_DATA, MT_NODATA,
     MR_BROKER, MR_ALL,
     MsgHeader, Message,

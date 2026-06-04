@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Message.h"
+#include "Salakhova_Message.h"
 #include <queue>
 #include <mutex>
 

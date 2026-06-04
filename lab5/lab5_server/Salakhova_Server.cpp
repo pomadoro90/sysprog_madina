@@ -1,5 +1,5 @@
-#include "Message.h"
-#include "Session.h"
+#include "Salakhova_Message.h"
+#include "Salakhova_Session.h"
 
 class SRBroker : public Sender, public Receiver
 {
