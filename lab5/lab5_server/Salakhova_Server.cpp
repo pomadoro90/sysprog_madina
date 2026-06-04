@@ -117,9 +117,8 @@ public:
                     }
                     case MT_GETDATA:
                     {
-                        Message reply(m.header.from, MR_BROKER, MT_NODATA);
+                        Message reply(0, m.header.from, MT_NODATA);
                         SRBroker().receive(reply);
-                        reply.header.to = m.header.from;
                         reply.send(transport);
                         break;
                     }
