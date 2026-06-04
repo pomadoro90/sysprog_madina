@@ -166,7 +166,9 @@ namespace Salakhova_Sharp
                     // Receive response
                     var msg = ReceiveMessageRaw();
 
-                    if (msg.header.type == (int)MessageTypes.MT_DATA)
+                    if (msg.header.type == (int)MessageTypes.MT_DATA ||
+                        msg.header.type == (int)MessageTypes.MT_CONFIRM ||
+                        msg.header.type == (int)MessageTypes.MT_INIT)
                     {
                         inbox.Enqueue(msg);
                     }
